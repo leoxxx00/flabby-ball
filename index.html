@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Flappy Chicken (Easy Mode)</title>
+  <title>Flappy Chicken (Gradual Difficulty)</title>
   <style>
     body {
       margin: 0;
@@ -32,8 +32,8 @@
       y: 150,
       width: 30,
       height: 30,
-      gravity: 0.18,   // Slightly stronger gravity
-      jump: 4,         // Smaller jump to reduce bounciness
+      gravity: 0.18,   // Starting gravity
+      jump: 4,         // Jump force
       speed: 0,
       draw() {
         ctx.fillStyle = "#fff000"; // Yellow chicken
@@ -55,6 +55,7 @@
       reset() {
         this.y = 150;
         this.speed = 0;
+        this.gravity = 0.18; // Reset gravity on restart
       }
     };
 
@@ -62,8 +63,9 @@
       position: [],
       width: 50,
       height: 400,
-      gap: 200,      // Bigger gap
-      dx: 1.5,       // Slower speed
+      gap: 200,      // Starting gap
+      dx: 1.5,       // Starting speed
+      spawnInterval: 120, // Frames between pipe spawns, will decrease to make it harder
       draw() {
         ctx.fillStyle = "#228B22";
         this.position.forEach(p => {
@@ -72,14 +74,16 @@
         });
       },
       update() {
-        if (frames % 120 === 0) {
+        // Spawn pipes more frequently as frames increase (difficulty increase)
+        if (frames % this.spawnInterval === 0) {
           const topY = -150 * Math.random();
-          this.position.push({ x: canvas.width, y: topY });
+          this.position.push({ x: canvas.width, y: topY, scored: false });
         }
 
         this.position.forEach(p => {
           p.x -= this.dx;
 
+          // Collision detection
           if (
             bird.x < p.x + this.width &&
             bird.x + bird.width > p.x &&
@@ -88,16 +92,32 @@
             gameOver();
           }
 
+          // Scoring
           if (p.x + this.width < bird.x && !p.scored) {
             score++;
             p.scored = true;
 
-            // Gradually make it harder
-            if (score % 5 === 0 && this.gap > 130) this.gap -= 5;
-            if (score % 10 === 0 && this.dx < 4) this.dx += 0.3;
+            // Increase difficulty smoothly as score rises:
+            // Decrease gap to a minimum of 120
+            if (this.gap > 120) {
+              this.gap -= 3;
+            }
+            // Increase pipe speed to a max of 5
+            if (this.dx < 5) {
+              this.dx += 0.15;
+            }
+            // Decrease spawn interval to a min of 80 frames
+            if (this.spawnInterval > 80) {
+              this.spawnInterval -= 2;
+            }
+            // Increase gravity a bit to make control harder (max 0.4)
+            if (bird.gravity < 0.4) {
+              bird.gravity += 0.015;
+            }
           }
         });
 
+        // Remove offscreen pipes
         if (this.position.length && this.position[0].x + this.width < 0) {
           this.position.shift();
         }
@@ -106,6 +126,7 @@
         this.position = [];
         this.dx = 1.5;
         this.gap = 200;
+        this.spawnInterval = 120;
       }
     };
 
