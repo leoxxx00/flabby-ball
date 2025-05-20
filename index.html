@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Flappy Chicken (Easy Mode)</title>
+  <style>
+    body {
+      margin: 0;
+      background: #70c5ce;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #70c5ce;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let frames = 0;
+    let score = 0;
+    let gameRunning = true;
+
+    const bird = {
+      x: 50,
+      y: 150,
+      width: 30,
+      height: 30,
+      gravity: 0.18,   // Slightly stronger gravity
+      jump: 4,         // Smaller jump to reduce bounciness
+      speed: 0,
+      draw() {
+        ctx.fillStyle = "#fff000"; // Yellow chicken
+        ctx.beginPath();
+        ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+      },
+      flap() {
+        this.speed = -this.jump;
+      },
+      update() {
+        this.speed += this.gravity;
+        this.y += this.speed;
+
+        if (this.y + this.height >= canvas.height || this.y <= 0) {
+          gameOver();
+        }
+      },
+      reset() {
+        this.y = 150;
+        this.speed = 0;
+      }
+    };
+
+    const pipes = {
+      position: [],
+      width: 50,
+      height: 400,
+      gap: 200,      // Bigger gap
+      dx: 1.5,       // Slower speed
+      draw() {
+        ctx.fillStyle = "#228B22";
+        this.position.forEach(p => {
+          ctx.fillRect(p.x, p.y, this.width, this.height);
+          ctx.fillRect(p.x, p.y + this.height + this.gap, this.width, canvas.height);
+        });
+      },
+      update() {
+        if (frames % 120 === 0) {
+          const topY = -150 * Math.random();
+          this.position.push({ x: canvas.width, y: topY });
+        }
+
+        this.position.forEach(p => {
+          p.x -= this.dx;
+
+          if (
+            bird.x < p.x + this.width &&
+            bird.x + bird.width > p.x &&
+            (bird.y < p.y + this.height || bird.y + bird.height > p.y + this.height + this.gap)
+          ) {
+            gameOver();
+          }
+
+          if (p.x + this.width < bird.x && !p.scored) {
+            score++;
+            p.scored = true;
+
+            // Gradually make it harder
+            if (score % 5 === 0 && this.gap > 130) this.gap -= 5;
+            if (score % 10 === 0 && this.dx < 4) this.dx += 0.3;
+          }
+        });
+
+        if (this.position.length && this.position[0].x + this.width < 0) {
+          this.position.shift();
+        }
+      },
+      reset() {
+        this.position = [];
+        this.dx = 1.5;
+        this.gap = 200;
+      }
+    };
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bird.draw();
+      pipes.draw();
+
+      ctx.fillStyle = "#fff";
+      ctx.font = "24px sans-serif";
+      ctx.fillText(`Score: ${score}`, 150, 40);
+    }
+
+    function update() {
+      bird.update();
+      pipes.update();
+    }
+
+    function loop() {
+      if (gameRunning) {
+        update();
+        draw();
+        frames++;
+        requestAnimationFrame(loop);
+      }
+    }
+
+    function gameOver() {
+      gameRunning = false;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.font = "36px sans-serif";
+      ctx.fillText("Game Over!", 110, 260);
+      ctx.font = "24px sans-serif";
+      ctx.fillText(`Score: ${score}`, 160, 300);
+      ctx.fillText("Click to restart", 120, 340);
+    }
+
+    canvas.addEventListener("click", () => {
+      if (!gameRunning) {
+        bird.reset();
+        pipes.reset();
+        score = 0;
+        frames = 0;
+        gameRunning = true;
+        loop();
+      } else {
+        bird.flap();
+      }
+    });
+
+    loop();
+  </script>
+</body>
+</html>
